@@ -11,7 +11,6 @@ A **REST API** for managing a barbershop — barbers, appointments, and user acc
 - **User management** — registration, login, JWT-based authentication with refresh tokens, role-based authorization (Admin)
 - **Barber management** — full CRUD for barber profiles with experience levels (Apprentice → Journeyman → Master)
 - **Appointment scheduling** — book, update, and cancel appointments (Haircut, Shave, or both) with domain-level validation and automatic duration calculation
-- **Email notifications** — confirmation emails on appointment creation via domain events
 - **Health checks** — `/health` endpoint backed by a database connectivity check
 
 ---
