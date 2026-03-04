@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".readme" />
+  </Folder>
+  <Project Path="Barbershop.Application/Barbershop.Application.csproj" Id="8d3a9b8b-34f5-401a-89e3-2ced0f688655" />
+  <Project Path="Barbershop.Domain/Barbershop.Domain.csproj" Id="e1229ac0-adff-4abe-830d-317f5069f064" />
+  <Project Path="Barbershop.Infrastructure/Barbershop.Infrastructure.csproj" Id="a604fccd-9d1d-475d-a8d3-01934817d17a" />
+  <Project Path="Barbershop.WebAPI/Barbershop.WebAPI.csproj" />
+</Solution>
