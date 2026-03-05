@@ -1,4 +1,4 @@
-name: .NET + Docker + ACR + Azure Container App
+name: Build and deploy to Azure Container App
 
 on:
   push:
