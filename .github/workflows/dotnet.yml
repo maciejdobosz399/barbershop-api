@@ -1,7 +1,4 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
-name: .NET
+name: .NET + Docker + ACR + Azure Container App
 
 on:
   push:
@@ -10,19 +7,53 @@ on:
     branches: [ "master" ]
 
 jobs:
-  build:
-
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
+    # 1. Checkout repo
     - uses: actions/checkout@v4
+
+    # 2. Setup .NET
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
+
+    # 3. Restore, build, test
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore --configuration Release
     - name: Test
       run: dotnet test --no-build --verbosity normal
+
+    # 4. Login to Azure
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    # 5. Login to Azure Container Registry
+    - name: Log in to ACR
+      run: |
+        echo ${{ secrets.AZURE_CLIENT_SECRET }} | docker login ${{ secrets.ACR_NAME }} -u ${{ secrets.AZURE_CLIENT_ID }} --password-stdin
+
+    # 6. Build Docker image
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} .
+
+    # 7. Push Docker image to ACR
+    - name: Push Docker image
+      run: |
+        docker push ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }}
+
+    # 8. Deploy to Azure Container App
+    - name: Deploy to Azure Container App
+      run: |
+        az containerapp update \
+          --name my-barbershop-app \
+          --resource-group my-resource-group \
+          --image ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} \
+          --environment my-container-app-env
