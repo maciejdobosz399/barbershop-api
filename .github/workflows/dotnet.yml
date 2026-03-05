@@ -7,28 +7,57 @@ on:
     branches: [ "master" ]
 
 jobs:
-  build-and-deploy:
+  # ----------------------
+  # 1. Build .NET project
+  # ----------------------
+  build:
     runs-on: ubuntu-latest
-
+    outputs:
+      artifact-path: ${{ steps.publish.outputs.artifact-path }}
     steps:
-    # 1. Checkout repo
     - uses: actions/checkout@v4
 
-    # 2. Setup .NET 10
-    - name: Setup .NET
+    - name: Setup .NET 10
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 10.0.x
 
-    # 3. Restore, build, test
     - name: Restore dependencies
       run: dotnet restore
+
     - name: Build
       run: dotnet build --no-restore --configuration Release
+
     - name: Test
       run: dotnet test --no-build --verbosity normal
 
-    # 4. Login to Azure using v2
+    - name: Publish app
+      id: publish
+      run: |
+        dotnet publish -c Release -o ./publish
+        echo "artifact-path=./publish" >> $GITHUB_OUTPUT
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: published-app
+        path: ./publish
+
+  # ----------------------
+  # 2. Docker build & push
+  # ----------------------
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: published-app
+        path: ./publish
+
     - name: Login to Azure
       uses: azure/login@v2
       with:
@@ -37,19 +66,32 @@ jobs:
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
-    # 5. Login to Azure Container Registry
     - name: Login to ACR
       run: az acr login --name ${{ secrets.ACR_NAME }}
 
-    # 6. Build Docker image
     - name: Build Docker image
       run: docker build -t ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} .
 
-    # 7. Push Docker image to ACR
-    - name: Push Docker image
+    - name: Push Docker image to ACR
       run: docker push ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }}
 
-    # 8. Deploy to Azure Container App
+  # ----------------------
+  # 3. Deploy to Azure Container App
+  # ----------------------
+  deploy:
+    needs: docker
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Login to Azure
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
     - name: Deploy to Azure Container App
       run: |
         az containerapp update \
