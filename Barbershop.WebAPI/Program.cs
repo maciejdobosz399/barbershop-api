@@ -2,8 +2,10 @@ using Asp.Versioning.ApiExplorer;
 using Azure.Identity;
 using Barbershop.Application;
 using Barbershop.Infrastructure;
+using Barbershop.Infrastructure.DbContexts;
 using Barbershop.WebAPI;
 using Barbershop.WebAPI.Middleware;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Wolverine;
@@ -16,8 +18,9 @@ var connectionString = builder.Configuration.GetConnectionString("AzureAppConfig
 
 builder.Configuration.AddAzureAppConfiguration(options =>
 {
-    options.Connect(connectionString)
-           .Select(KeyFilter.Any, LabelFilter.Null)
+	options.Connect(connectionString)
+		   .Select(KeyFilter.Any, LabelFilter.Null)
+		   .Select(KeyFilter.Any, builder.Environment.EnvironmentName)
            .ConfigureKeyVault(kv =>
            {
                kv.SetCredential(new DefaultAzureCredential());
@@ -36,6 +39,8 @@ builder.Services.AddApplicationInsightsTelemetry();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+var connstring = builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddApplication()
     .AddInfrastructure(builder.Configuration)
     .AddWebAPI(builder.Configuration)
@@ -48,6 +53,13 @@ builder.Host.UseWolverine(options =>
 });
 
 var app = builder.Build();
+
+if (app.Environment.IsProduction())
+{
+    using var migrationScope = app.Services.CreateScope();
+    var dbContext = migrationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 using (var scope = app.Services.CreateScope())
 {
