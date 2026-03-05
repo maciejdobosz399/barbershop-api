@@ -42,7 +42,7 @@ jobs:
         run: az acr login --name ${{ secrets.ACR_NAME }}
 
       - name: Build image
-        run: docker build -t ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} -f api/Barbershop.WebAPI/Dockerfile api/Barbershop.WebAPI
+        run: docker build -t ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} -f Barbershop.WebAPI/Dockerfile Barbershop.WebAPI
 
       - name: Push image
         run: docker push ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }}
