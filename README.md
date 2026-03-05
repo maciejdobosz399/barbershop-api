@@ -1,0 +1,94 @@
+# ✂️ Barbershop Appointment API
+
+A **REST API** for managing a barbershop — barbers, appointments, and user accounts — built with **.NET 10** following **Clean Architecture** and **Domain-Driven Design** principles.
+
+> **Portfolio project** — the architecture, domain model, and overall design are my own work. AI tooling (GitHub Copilot) was used to assist with parts of the code generation, but not the entire codebase.
+
+---
+
+## What it does
+
+- **User management** — registration, login, JWT-based authentication with refresh tokens, role-based authorization (Admin)
+- **Barber management** — full CRUD for barber profiles with experience levels (Apprentice → Journeyman → Master)
+- **Appointment scheduling** — book, update, and cancel appointments (Haircut, Shave, or both) with domain-level validation and automatic duration calculation
+- **Health checks** — `/health` endpoint backed by a database connectivity check
+
+---
+
+## Architecture
+
+The solution is split into four projects following Clean Architecture:
+
+| Project | Responsibility |
+|---|---|
+| **Barbershop.Domain** | Entities, Aggregate Roots, Value Objects, Domain Events, Repository interfaces, Result pattern |
+| **Barbershop.Application** | Use-case handlers (Commands / Queries), DTOs, service abstractions |
+| **Barbershop.Infrastructure** | EF Core (PostgreSQL), Identity, JWT token service, email service, repository implementations |
+| **Barbershop.WebAPI** | Controllers, DI composition root, middleware, Swagger / versioned API |
+
+---
+
+## Key technologies & libraries
+
+- **.NET 10 / ASP.NET Core** — web framework
+- **Entity Framework Core** with **PostgreSQL** (Npgsql)
+- **ASP.NET Core Identity** — user & role management
+- **JWT Bearer Authentication** — access & refresh token flow
+- **Wolverine** — in-process mediator for CQRS command/query dispatching and domain event handling
+- **Azure App Configuration + Azure Key Vault** — externalized, refreshable configuration and secret management
+- **Asp.Versioning** — API versioning (`v1`)
+- **Swagger / OpenAPI** — interactive API documentation
+
+---
+
+## Domain highlights
+
+- **Result pattern** — no exceptions for expected business failures; commands return `Result<T>`
+- **Aggregate Roots & Domain Events** — `Appointment` raises `AppointmentCreatedEvent` / `AppointmentCancelledEvent`, handled asynchronously to send emails
+- **Auditable entities** — automatic tracking of created/modified timestamps
+- **Rich domain validation** — factory methods (`Create`) encapsulate invariants
+
+---
+
+## Getting started
+
+### Prerequisites
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- PostgreSQL instance
+- Azure App Configuration resource (or replace with local `appsettings.json` overrides)
+
+### Run locally
+
+```bash
+# Restore & build
+dotnet build
+
+# Apply EF Core migrations
+dotnet ef database update --startup-project ./Barbershop.WebAPI
+
+# Run the API
+dotnet run --project ./Barbershop.WebAPI
+```
+
+### EF Core migrations
+
+```bash
+# Add a new migration
+dotnet ef migrations add <MigrationName> --project ./Barbershop.Infrastructure --startup-project ./Barbershop.WebAPI
+
+# Update the database
+dotnet ef database update --startup-project ./Barbershop.WebAPI
+```
+
+---
+
+## API overview
+
+| Area | Endpoints |
+|---|---|
+| **Users** | `POST register`, `POST login`, `POST refresh-token`, `POST revoke-token`, `GET /users`, `GET /users/{id}`, `PUT /users/me`, `DELETE /users/{id}` |
+| **Barbers** | `GET /barbers`, `GET /barbers/{id}`, `POST /barbers`, `PUT /barbers/{id}`, `DELETE /barbers/{id}`, `GET /barbers/{id}/appointments` |
+| **Appointments** | `GET /appointments`, `GET /appointments/{id}`, `POST /appointments`, `PUT /appointments/{id}`, `DELETE /appointments/{id}` |
+
+All endpoints are versioned under `/api/v1/`. Swagger UI is available in Development at the root.
