@@ -14,7 +14,7 @@ jobs:
     # 1. Checkout repo
     - uses: actions/checkout@v4
 
-    # 2. Setup .NET
+    # 2. Setup .NET 10
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -28,26 +28,26 @@ jobs:
     - name: Test
       run: dotnet test --no-build --verbosity normal
 
-    # 4. Login to Azure
+    # 4. Login to Azure using v2
     - name: Login to Azure
-      uses: azure/login@v1
+      uses: azure/login@v2
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
     # 5. Login to Azure Container Registry
-    - name: Log in to ACR
-      run: |
-        echo ${{ secrets.AZURE_CLIENT_SECRET }} | docker login ${{ secrets.ACR_NAME }} -u ${{ secrets.AZURE_CLIENT_ID }} --password-stdin
+    - name: Login to ACR
+      run: az acr login --name ${{ secrets.ACR_NAME }}
 
     # 6. Build Docker image
     - name: Build Docker image
-      run: |
-        docker build -t ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} .
+      run: docker build -t ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} .
 
     # 7. Push Docker image to ACR
     - name: Push Docker image
-      run: |
-        docker push ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }}
+      run: docker push ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }}
 
     # 8. Deploy to Azure Container App
     - name: Deploy to Azure Container App
