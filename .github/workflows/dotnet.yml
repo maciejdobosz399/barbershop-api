@@ -14,54 +14,130 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 10.0.x
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
 
-    - run: dotnet restore
-    - run: dotnet build --configuration Release --no-restore
-    - run: dotnet test --no-build
+      - run: dotnet restore
+      - run: dotnet build --configuration Release --no-restore
+      - run: dotnet test --no-build
 
   docker:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Login to Azure
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          auth-type: federated
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    - name: Login to ACR
-      run: az acr login --name ${{ secrets.ACR_NAME }}
+      - name: Login to ACR
+        run: az acr login --name ${{ secrets.ACR_NAME }}
 
-    - name: Build image
-      run: docker build -t ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} .
+      - name: Build image
+        run: docker build \
+          -t ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} \
+          -f api/Barbershop.WebAPI/Dockerfile \
+          api/Barbershop.WebAPI
 
-    - name: Push image
-      run: docker push ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }}
+      - name: Push image
+        run: docker push ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }}
 
   deploy:
     needs: docker
     runs-on: ubuntu-latest
     steps:
-    - name: Login to Azure
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          auth-type: federated
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    - name: Deploy
-      run: |
-        az containerapp update \
-          --name my-barbershop-app \
-          --resource-group my-resource-group \
-          --image ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} \
-          --environment my-container-app-env
+      - name: Deploy
+        run: |
+          az containerapp update \
+            --name my-barbershop-app \
+            --resource-group my-resource-group \
+            --image ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} \
+            --environment my-container-app-envname: Build and deploy to Azure Container App
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - run: dotnet restore
+      - run: dotnet build --configuration Release --no-restore
+      - run: dotnet test --no-build
+
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          auth-type: federated
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ secrets.ACR_NAME }}
+
+      - name: Build image
+        run: docker build \
+          -t ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} \
+          -f api/Barbershop.WebAPI/Dockerfile \
+          api/Barbershop.WebAPI
+
+      - name: Push image
+        run: docker push ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }}
+
+  deploy:
+    needs: docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          auth-type: federated
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy
+        run: |
+          az containerapp update \
+            --name my-barbershop-app \
+            --resource-group my-resource-group \
+            --image ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} \
+            --environment my-container-app-env
