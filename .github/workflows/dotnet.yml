@@ -61,7 +61,6 @@ jobs:
       - name: Deploy
         run: |
           az containerapp update \
-            --name my-barbershop-app \
-            --resource-group my-resource-group \
+            --name barbershop-api \
+            --resource-group training-md \
             --image ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} \
-            --environment my-container-app-env
