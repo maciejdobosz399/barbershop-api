@@ -64,3 +64,4 @@ jobs:
             --name barbershop-api \
             --resource-group training-md \
             --image ${{ secrets.ACR_NAME }}/barbershop-api:${{ github.sha }} \
+            --set-env-vars ConnectionStrings__AzureAppConfiguration="${{ secrets.APPCONFIG_CONNECTION }}"
